@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TWS Issue Tracking Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F5F6FA;--surface:#FFFFFF;--border:#E2E8F0;--border2:#CBD5E1;
+  --primary:#1E3A8A;--primary2:#2563EB;--accent:#0EA5E9;
+  --orange:#F97316;--green:#16A34A;--red:#DC2626;--purple:#7C3AED;--yellow:#D97706;
+  --text:#0F172A;--text2:#334155;--muted:#64748B;--muted2:#94A3B8;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes countUp{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes barGrow{from{width:0}to{width:100%}}
+
+/* Header */
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,var(--primary),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 4px 12px rgba(30,58,138,.3);
+}
+.logo-name{font-family:'DM Serif Display';font-size:20px;color:var(--primary);letter-spacing:.5px;}
+.logo-sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:1px;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;
+  font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:'DM Sans',sans-serif;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary2);transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,58,138,.35);}
+.btn-outline{background:#fff;color:var(--primary);border:1.5px solid var(--border2);}
+.btn-outline:hover{border-color:var(--primary);background:#EEF2FF;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#15803d;transform:translateY(-1px);box-shadow:0 4px 14px rgba(22,163,74,.35);}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:hover{background:#ea580c;transform:translateY(-1px);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.hidden{display:none!important;}
+
+/* Import screen */
+#importScreen{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:40px 24px;}
+.import-card{
+  background:var(--surface);border-radius:20px;padding:48px;max-width:860px;width:100%;
+  box-shadow:var(--shadow-lg);animation:fadeUp .6s ease;border:1px solid var(--border);
+}
+.import-title{font-family:'DM Serif Display';font-size:32px;color:var(--primary);margin-bottom:6px;}
+.import-sub{font-size:14px;color:var(--muted);margin-bottom:32px;}
+.drop-zone{
+  border:2px dashed var(--border2);border-radius:14px;padding:48px 32px;text-align:center;
+  cursor:pointer;transition:all .3s;background:var(--bg);position:relative;
+}
+.drop-zone.hover{border-color:var(--primary2);background:#EEF2FF;}
+.drop-icon{font-size:56px;margin-bottom:16px;display:block;}
+.drop-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.drop-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.drop-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.url-row{display:flex;gap:8px;max-width:600px;margin:20px auto 0;}
+.url-inp{
+  flex:1;background:#fff;border:1.5px solid var(--border2);border-radius:8px;
+  padding:10px 14px;color:var(--text);font-size:13px;outline:none;font-family:'DM Sans',sans-serif;
+}
+.url-inp:focus{border-color:var(--primary2);}
+.col-hints{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;
+  margin-top:28px;padding:20px;background:var(--bg);border-radius:10px;
+}
+.hint-item{font-size:12px;color:var(--muted2);display:flex;align-items:center;gap:6px;}
+.hint-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+/* Dashboard */
+#dashboard{padding:24px 32px 100px;max-width:1600px;margin:0 auto;animation:fadeIn .5s ease;}
+
+/* Report bar */
+.report-bar{
+  background:linear-gradient(135deg,var(--primary) 0%,var(--primary2) 60%,var(--accent) 100%);
+  border-radius:14px;padding:20px 28px;margin-bottom:24px;display:flex;
+  align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  box-shadow:0 6px 24px rgba(30,58,138,.25);
+}
+.report-bar-title{font-family:'DM Serif Display';font-size:22px;color:#fff;letter-spacing:.5px;}
+.report-bar-sub{font-size:11px;color:rgba(255,255,255,.7);margin-top:3px;}
+.report-bar-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* Stat cards */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:700px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+.stat{
+  background:var(--surface);border-radius:14px;padding:20px;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);border:1px solid var(--border);cursor:pointer;
+  transition:all .3s;animation:fadeUp .5s ease both;
+}
+.stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat.s1::before{background:var(--orange);}
+.stat.s2::before{background:var(--green);}
+.stat.s3::before{background:var(--accent);}
+.stat.s4::before{background:var(--red);}
+.stat.s5::before{background:var(--purple);}
+.stat-icon{font-size:28px;margin-bottom:10px;}
+.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);font-weight:600;margin-bottom:4px;}
+.stat-val{font-family:'Space Mono';font-size:38px;font-weight:700;line-height:1;transition:all .3s;}
+.stat.s1 .stat-val{color:var(--orange);}
+.stat.s2 .stat-val{color:var(--green);}
+.stat.s3 .stat-val{color:var(--accent);}
+.stat.s4 .stat-val{color:var(--red);}
+.stat.s5 .stat-val{color:var(--purple);}
+.stat-trend{font-size:11px;color:var(--muted);margin-top:4px;}
+.stat-bg{
+  position:absolute;right:-10px;bottom:-10px;font-size:72px;opacity:.05;line-height:1;
+  transform:rotate(-15deg);pointer-events:none;
+}
+
+/* Charts grid */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
+@media(max-width:1200px){.charts-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.charts-grid{grid-template-columns:1fr;}}
+.chart-card{
+  background:var(--surface);border-radius:14px;padding:20px;
+  box-shadow:var(--shadow);border:1px solid var(--border);animation:fadeUp .6s ease both;
+}
+.chart-card.span2{grid-column:span 2;}
+.chart-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
+.chart-wrap{position:relative;height:220px;}
+
+/* Detail card */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr;}}
+.detail-card{
+  background:var(--surface);border-radius:14px;padding:24px;
+  box-shadow:var(--shadow);border:1px solid var(--border);animation:fadeUp .7s ease both;
+}
+.detail-card-title{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:6px;}
+.kv-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+.kv-row:last-child{border-bottom:none;}
+.kv-key{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px;}
+.kv-val{font-size:13px;color:var(--text);font-weight:600;text-align:right;}
+.kv-val.blue{color:var(--primary2);}
+.status-badge{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;
+}
+.badge-closed{background:#DCFCE7;color:#15803D;}
+.badge-open{background:#FEE2E2;color:#DC2626;}
+.badge-rca{background:#FEF3C7;color:#D97706;}
+.badge-note{background:#EDE9FE;color:#7C3AED;}
+.badge-blue{background:#DBEAFE;color:#1D4ED8;}
+
+/* Filter bar */
+.filter-bar{
+  background:var(--surface);border-radius:10px;padding:12px 16px;
+  margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+}
+.filter-label{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;}
+.filter-inp,.filter-select{
+  background:var(--bg);border:1.5px solid var(--border2);border-radius:7px;
+  padding:7px 12px;color:var(--text);font-size:12px;outline:none;font-family:'DM Sans',sans-serif;
+}
+.filter-inp:focus,.filter-select:focus{border-color:var(--primary2);}
+
+/* Table */
+.tbl-card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;animation:fadeUp .8s ease both;}
+.tbl-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.tbl-title{font-size:14px;font-weight:700;color:var(--text);}
+.tbl-count{font-size:12px;color:var(--muted);}
+.tbl-scroll{overflow-x:auto;max-height:500px;overflow-y:auto;}
+.tbl-scroll::-webkit-scrollbar{height:6px;width:6px;}
+.tbl-scroll::-webkit-scrollbar-track{background:var(--bg);}
+.tbl-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+table.dt{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+table.dt thead tr th{
+  background:var(--primary);color:#fff;padding:11px 14px;text-align:left;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  position:sticky;top:0;z-index:1;
+}
+table.dt tbody tr:nth-child(even) td{background:#F8FAFC;}
+table.dt tbody tr:hover td{background:#EFF6FF;}
+table.dt tbody tr td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);}
+.row-num{
+  font-family:'Space Mono';font-size:10px;color:var(--muted);font-weight:700;
+  background:var(--bg);border-radius:4px;padding:2px 6px;border:1px solid var(--border);
+}
+
+/* Progress bar inline */
+.prog-wrap{display:flex;align-items:center;gap:8px;}
+.prog-bar{height:6px;border-radius:3px;flex:1;background:var(--border);overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+.prog-val{font-size:11px;font-weight:700;min-width:28px;font-family:'Space Mono';}
+
+/* Bottom bar */
+.bottom{
+  position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
+  padding:12px 32px;display:flex;align-items:center;justify-content:space-between;z-index:50;
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);
+}
+.bottom-info{font-size:12px;color:var(--muted);}
+.bottom-info strong{color:var(--text);}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:80px;right:24px;background:var(--primary);color:#fff;
+  padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;
+  display:flex;align-items:center;gap:8px;transform:translateX(220%);
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:200;
+  box-shadow:0 6px 24px rgba(30,58,138,.4);
+}
+.toast.show{transform:translateX(0);}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
+
+/* Loader */
+.loader{
+  width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary2);
+  border-radius:50%;animation:spin 1s linear infinite;
+}
+
+/* Divider */
+.section-divider{
+  display:flex;align-items:center;gap:12px;margin:24px 0 16px;
+}
+.section-divider-line{flex:1;height:1px;background:var(--border);}
+.section-divider-text{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    <div>
+      <div class="logo-name">TWS Issue Master</div>
+      <div class="logo-sub">Issue Tracking Dashboard</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-outline btn-sm" onclick="resetDash()">↺ Reset</button>
+    <input type="file" id="fileInp" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleFile(event)">
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('fileInp').click()">📁 Upload Excel/CSV</button>
+    <button class="btn btn-primary btn-sm" id="headerPdfBtn" onclick="downloadXLSX()" class="hidden">⬇ Export XLSX</button>
+  </div>
+</div>
+
+<!-- IMPORT SCREEN -->
+<div id="importScreen">
+  <div class="import-card">
+    <div class="import-title">Issue Tracking Dashboard</div>
+    <div class="import-sub">Upload your Excel/CSV or connect Google Sheets to generate a professional report matching TWS template</div>
+    
+    <div class="drop-zone" id="dropZone" ondragover="dOver(event)" ondragleave="dLeave(event)" ondrop="dDrop(event)">
+      <span class="drop-icon">📂</span>
+      <div class="drop-title">Drop Excel / CSV here</div>
+      <div class="drop-sub">.xlsx · .xls · .csv — or use Google Sheets link below</div>
+      <div class="drop-btns">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInp').click()">📁 Select File</button>
+        <button class="btn btn-outline" onclick="toggleUrl()">🔗 Google Sheets Link</button>
+        <button class="btn btn-outline" onclick="loadDemo()">📊 Load Demo Data</button>
+      </div>
+      <div id="urlRow" class="url-row hidden">
+        <input id="urlInp" class="url-inp" type="text" placeholder="Paste Google Sheets published CSV link (File → Share → Publish to web → CSV)">
+        <button class="btn btn-primary" onclick="loadUrl()">Load</button>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">📌 Auto-detected columns:</div>
+      <div class="col-hints">
+        <div class="hint-item"><div class="hint-dot"></div>Issue ID / SCR Number</div>
+        <div class="hint-item"><div class="hint-dot"></div>Unique Service Issue</div>
+        <div class="hint-item"><div class="hint-dot"></div>Closed as on Date</div>
+        <div class="hint-item"><div class="hint-dot"></div>Balance Open Issue</div>
+        <div class="hint-item"><div class="hint-dot"></div>HP Category (Below 30 / 30-60 / 60-101 / Above 101)</div>
+        <div class="hint-item"><div class="hint-dot"></div>Impl Jan/Feb/Mar/Apr-26 (Plan)</div>
+        <div class="hint-item"><div class="hint-dot"></div>Actual Jan/Feb-26 (Actual)</div>
+        <div class="hint-item"><div class="hint-dot"></div>Status / Remark / Owner / Department</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+  <div id="dashboard-inner">
+
+    <!-- REPORT BAR -->
+    <div class="report-bar">
+      <div>
+        <div class="report-bar-title" id="rTitle">Issue Tracking Dashboard · January 2026</div>
+        <div class="report-bar-sub" id="rSub">Status as on 16-Feb-2026 · Generated <span id="genDate"></span></div>
+      </div>
+      <div class="report-bar-actions">
+        <span id="totalBadge" style="background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">0 records</span>
+        <button class="btn" style="background:#fff;color:var(--primary);font-weight:700;" onclick="downloadXLSX()">⬇ Export XLSX</button>
+        <button class="btn btn-orange" onclick="downloadPDF()">📄 Download PDF</button>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-row">
+      <div class="stat s1" style="animation-delay:.05s">
+        <div class="stat-bg">📋</div>
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">Total Issues</div>
+        <div class="stat-val" id="st-total">0</div>
+        <div class="stat-trend">Unique service issues</div>
+      </div>
+      <div class="stat s2" style="animation-delay:.1s">
+        <div class="stat-bg">✅</div>
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Closed Issues</div>
+        <div class="stat-val" id="st-closed">0</div>
+        <div class="stat-trend" id="st-closed-pct">— % of total</div>
+      </div>
+      <div class="stat s3" style="animation-delay:.15s">
+        <div class="stat-bg">📝</div>
+        <div class="stat-icon">📝</div>
+        <div class="stat-label">Closure Notes</div>
+        <div class="stat-val" id="st-notes">0</div>
+        <div class="stat-trend">Pending notes</div>
+      </div>
+      <div class="stat s4" style="animation-delay:.2s">
+        <div class="stat-bg">🔴</div>
+        <div class="stat-icon">🔴</div>
+        <div class="stat-label">Open Issues</div>
+        <div class="stat-val" id="st-open">0</div>
+        <div class="stat-trend" id="st-open-pct">— % of total</div>
+      </div>
+      <div class="stat s5" style="animation-delay:.25s">
+        <div class="stat-bg">⚡</div>
+        <div class="stat-icon">⚡</div>
+        <div class="stat-label">Below 30 HP</div>
+        <div class="stat-val" id="st-below30">0</div>
+        <div class="stat-trend">High priority</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+      <div class="chart-card" style="animation-delay:.1s">
+        <div class="chart-title">Issues by HP Category</div>
+        <div class="chart-sub">Count of issues per horsepower range</div>
+        <div class="chart-wrap"><canvas id="hpChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="animation-delay:.15s">
+        <div class="chart-title">Implementation Plan vs Actual</div>
+        <div class="chart-sub">Monthly scheduled vs delivered</div>
+        <div class="chart-wrap"><canvas id="implChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="animation-delay:.2s">
+        <div class="chart-title">Issue Closure Status</div>
+        <div class="chart-sub">Closed vs open breakdown</div>
+        <div class="chart-wrap"><canvas id="closureChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- DETAIL + DATA COMPLETENESS -->
+    <div class="detail-grid">
+      <div class="detail-card" style="animation-delay:.25s">
+        <div class="detail-card-title">🔍 Sample Issue Detail (Sr No: 1)</div>
+        <div id="sampleDetail"></div>
+      </div>
+      <div class="detail-card" style="animation-delay:.3s">
+        <div class="detail-card-title">📊 Data Completeness</div>
+        <div style="height:180px;position:relative;"><canvas id="complChart"></canvas></div>
+        <div id="hpBreakdown" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- SECTION DIVIDER -->
+    <div class="section-divider">
+      <div class="section-divider-line"></div>
+      <div class="section-divider-text">Row Data Preview</div>
+      <div class="section-divider-line"></div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="filter-label">🔍 Search:</div>
+      <input class="filter-inp" id="searchInp" placeholder="Any field..." oninput="applyFilter()" style="width:200px;">
+      <div class="filter-label">Status:</div>
+      <select class="filter-select" id="statusFilter" onchange="applyFilter()"><option value="">All Status</option></select>
+      <div class="filter-label">HP:</div>
+      <select class="filter-select" id="hpFilter" onchange="applyFilter()">
+        <option value="">All HP</option>
+        <option>Below 30 HP</option><option>30-60 HP</option><option>60-101 HP</option><option>Above 101 HP</option>
+      </select>
+      <div style="margin-left:auto;font-size:11px;color:var(--muted);" id="filterCount"></div>
+    </div>
+
+    <!-- DATA TABLE -->
+    <div class="tbl-card">
+      <div class="tbl-head">
+        <div class="tbl-title">📋 Data Preview</div>
+        <div class="tbl-count" id="shownCount"></div>
+      </div>
+      <div class="tbl-scroll">
+        <table class="dt">
+          <thead id="tHead"></thead>
+          <tbody id="tBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dashboard-inner -->
+</div><!-- /dashboard -->
+
+<!-- BOTTOM BAR -->
+<div class="bottom">
+  <div class="bottom-info" id="bottomInfo">No data loaded</div>
+  <div class="bottom-info">TWS Issue Tracking Dashboard · Professional Report</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Done</div>
+
+<script>
+(function(){
+  // ─────────── state ───────────
+  let allRows=[], allHeaders=[], filteredRows=[];
+  let charts={};
+
+  // ─────────── utils ───────────
+  function fmt(d=new Date()){
+    const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${d.getFullYear()}`;
+  }
+  function pct(a,b){return b?((a/b)*100).toFixed(1):'0.0';}
+  function gv(row,...keys){
+    for(let k of keys){
+      for(let h of allHeaders){
+        if(h.toLowerCase().replace(/[^a-z0-9]/g,'').includes(k.toLowerCase().replace(/[^a-z0-9]/g,''))){
+          let v=row[h];
+          if(v!==undefined&&String(v).trim()!=='')return String(v);
+        }
+      }
+    }
+    return '';
+  }
+  function gn(row,...keys){return parseFloat(gv(row,...keys))||0;}
+  function showToast(msg,type='',dur=2800){
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className='toast '+(type||'');
+    t.classList.add('show');
+    clearTimeout(window._tt);
+    window._tt=setTimeout(()=>t.classList.remove('show'),dur);
+  }
+  function animateNum(el,val){
+    let s=0, dur=700, step=dur/30;
+    let iv=setInterval(()=>{
+      s+=step; el.textContent=Math.min(Math.round((s/dur)*val),val);
+      if(s>=dur){el.textContent=val;clearInterval(iv);}
+    },step/30);
+  }
+  function destroyChart(name){if(charts[name]){charts[name].destroy();delete charts[name];}}
+
+  // ─────────── drag/drop ───────────
+  window.dOver=e=>{e.preventDefault();document.getElementById('dropZone').classList.add('hover');};
+  window.dLeave=()=>document.getElementById('dropZone').classList.remove('hover');
+  window.dDrop=e=>{
+    e.preventDefault(); document.getElementById('dropZone').classList.remove('hover');
+    const f=e.dataTransfer.files[0]; if(f)processFile(f);
+  };
+  window.toggleUrl=()=>document.getElementById('urlRow').classList.toggle('hidden');
+  window.handleFile=e=>{if(e.target.files[0])processFile(e.target.files[0]);};
+
+  function processFile(file){
+    const name=file.name.toLowerCase();
+    if(name.endsWith('.csv')){
+      const r=new FileReader(); r.onload=e=>parseCSV(e.target.result); r.readAsText(file);
+    } else {
+      const r=new FileReader(); r.onload=e=>parseXLSX(e.target.result); r.readAsArrayBuffer(file);
+    }
+  }
+  function parseCSV(txt){
+    const lines=txt.trim().split('\n');
+    if(lines.length<2)return alert('Not enough data');
+    allHeaders=lines[0].split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+    allRows=lines.slice(1).filter(l=>l.trim()).map(l=>{
+      const cols=l.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      let o={}; allHeaders.forEach((h,i)=>o[h]=cols[i]||''); return o;
+    }).filter(r=>Object.values(r).some(v=>v.trim()!==''));
+    render();
+  }
+  function parseXLSX(buf){
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const json=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(json.length<2)return alert('No data');
+    allHeaders=json[0].map(String);
+    allRows=json.slice(1).filter(r=>r.some(c=>String(c).trim())).map(r=>{
+      let o={}; allHeaders.forEach((h,i)=>o[h]=r[i]!==undefined?String(r[i]):''); return o;
+    }).filter(r=>Object.values(r).some(v=>v.trim()!==''));
+    render();
+  }
+  window.loadUrl=()=>{
+    let u=document.getElementById('urlInp').value.trim();
+    if(!u)return;
+    if(u.includes('/edit'))u=u.replace(/\/edit.*/,'/export?format=csv');
+    else if(u.includes('spreadsheets/d/')){
+      const id=u.match(/spreadsheets\/d\/([^/]+)/)?.[1];
+      if(id)u=`https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
+    }
+    showToast('⬇ Loading from Google Sheets...','',5000);
+    fetch(u).then(r=>{if(!r.ok)throw new Error();return r.text();})
+      .then(parseCSV).catch(()=>alert('❌ Failed. In Google Sheets: File → Share → Publish to web → Select CSV → Copy link'));
+  };
+
+  // ─────────── demo data ───────────
+  window.loadDemo=()=>{
+    allHeaders=['Issue ID','Period Start','Period End','Report Date','Unique Service Issue','Closed as on Date',
+      'Balance Open Issue','Under RCA','RD Plan Awaited','Below 30 HP','30-60 HP','60-101 HP','Above 101 HP',
+      'Status','HP Category','Impl Jan-26','Impl Feb-26','Impl Mar-26','Impl Apr-26',
+      'Actual Jan-26','Actual Feb-26','Remark','Owner','Department'];
+    const statuses=['Closed','Open','Under RCA','R&D Plan Awaited','Closure Note'];
+    const hpCats=['Below 30 HP','30-60 HP','60-101 HP','Above 101 HP'];
+    const owners=['Amit','Sneha','Rahul','Priya','Dev','Nisha'];
+    const depts=['Quality','Service','R&D','Purchase','Operations'];
+    allRows=Array.from({length:20},(_,i)=>{
+      let total=Math.floor(Math.random()*18)+5;
+      let closed=Math.floor(Math.random()*total);
+      let open=total-closed;
+      return {
+        'Issue ID':`SCR-${200+i}`,
+        'Period Start':'01-Jan-26','Period End':'31-Jan-26','Report Date':'16-Feb-2026',
+        'Unique Service Issue':String(total),'Closed as on Date':String(closed),'Balance Open Issue':String(open),
+        'Under RCA':String(Math.floor(Math.random()*3)),'RD Plan Awaited':String(Math.floor(Math.random()*2)),
+        'Below 30 HP':String(Math.floor(Math.random()*5)),'30-60 HP':String(Math.floor(Math.random()*6)),
+        '60-101 HP':String(Math.floor(Math.random()*3)),'Above 101 HP':String(Math.floor(Math.random()*2)),
+        'Status':statuses[i%statuses.length],'HP Category':hpCats[i%4],
+        'Impl Jan-26':String(Math.floor(Math.random()*4)),'Impl Feb-26':String(Math.floor(Math.random()*4)),
+        'Impl Mar-26':String(Math.floor(Math.random()*3)),'Impl Apr-26':String(Math.floor(Math.random()*2)),
+        'Actual Jan-26':String(Math.floor(Math.random()*4)),'Actual Feb-26':String(Math.floor(Math.random()*4)),
+        'Remark':['On track','Delayed','Pending RCA','Waiting for parts','Implemented'][i%5],
+        'Owner':owners[i%owners.length],'Department':depts[i%depts.length]
+      };
+    });
+    render();
+  };
+
+  // ─────────── RENDER ───────────
+  function render(){
+    filteredRows=[...allRows];
+    document.getElementById('importScreen').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('genDate').textContent=fmt();
+    const total=allRows.length;
+    document.getElementById('rTitle').textContent=`Issue Tracking Dashboard · ${total} Records`;
+    document.getElementById('totalBadge').textContent=`${total} records`;
+    document.getElementById('bottomInfo').innerHTML=`<strong>${total}</strong> rows loaded · ${allHeaders.length} columns`;
+
+    // Status filter
+    const statSel=document.getElementById('statusFilter');
+    statSel.innerHTML='<option value="">All Status</option>';
+    [...new Set(allRows.map(r=>gv(r,'Status','status')).filter(Boolean))].forEach(s=>{
+      let o=document.createElement('option'); o.textContent=s; statSel.appendChild(o);
+    });
+
+    updateAll();
+  }
+
+  function updateAll(){
+    const rows=filteredRows;
+    // ─── stats ───
+    const totalIss=rows.reduce((s,r)=>s+gn(r,'Unique Service','unique'),0);
+    const closedIss=rows.reduce((s,r)=>s+gn(r,'Closed','closed'),0);
+    const closureNotes=rows.filter(r=>gv(r,'Status').toLowerCase().includes('closure')).length;
+    const openIss=rows.reduce((s,r)=>s+gn(r,'Balance Open','open'),0);
+    const below30=rows.reduce((s,r)=>s+gn(r,'Below 30','below'),0);
+    const hp3060=rows.reduce((s,r)=>s+gn(r,'30-60 HP'),0);
+    const hp60101=rows.reduce((s,r)=>s+gn(r,'60-101 HP'),0);
+    const hpAbove=rows.reduce((s,r)=>s+gn(r,'Above 101 HP','above'),0);
+
+    animateNum(document.getElementById('st-total'),totalIss);
+    animateNum(document.getElementById('st-closed'),closedIss);
+    document.getElementById('st-notes').textContent=closureNotes;
+    animateNum(document.getElementById('st-open'),openIss);
+    animateNum(document.getElementById('st-below30'),below30);
+    document.getElementById('st-closed-pct').textContent=`${pct(closedIss,totalIss)}% of total`;
+    document.getElementById('st-open-pct').textContent=`${pct(openIss,totalIss)}% of total`;
+
+    // ─── HP chart ───
+    destroyChart('hp');
+    charts.hp=new Chart(document.getElementById('hpChart'),{
+      type:'bar',
+      data:{
+        labels:['Below 30 HP','30-60 HP','60-101 HP','Above 101 HP'],
+        datasets:[{
+          label:'Issues',
+          data:[below30,hp3060,hp60101,hpAbove],
+          backgroundColor:['#7C3AED','#9D4EDD','#BE6FE8','#D9A3F3'],
+          borderRadius:6,borderSkipped:false,
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        indexAxis:'y',
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.formattedValue+' issues'}}},
+        scales:{
+          x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#64748B',font:{size:11}}},
+          y:{grid:{display:false},ticks:{color:'#334155',font:{size:11,weight:'600'}}}
+        },
+        animation:{duration:900,easing:'easeOutQuart'}
+      }
+    });
+
+    // ─── impl plan vs actual chart ───
+    const months=['Jan-26','Feb-26','Mar-26','Apr-26'];
+    const planKeys=['Impl Jan','Impl Feb','Impl Mar','Impl Apr'];
+    const actKeys=['Actual Jan','Actual Feb'];
+    const planData=planKeys.map(k=>rows.reduce((s,r)=>s+gn(r,k),0));
+    const actData=actKeys.map(k=>rows.reduce((s,r)=>s+gn(r,k),0));
+    while(actData.length<4)actData.push(null);
+    destroyChart('impl');
+    charts.impl=new Chart(document.getElementById('implChart'),{
+      type:'bar',
+      data:{
+        labels:months,
+        datasets:[
+          {label:'Plan',data:planData,backgroundColor:'rgba(37,99,235,.75)',borderRadius:5,borderSkipped:false},
+          {label:'Actual',data:actData,backgroundColor:'rgba(220,38,38,.8)',borderRadius:5,borderSkipped:false}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{color:'#334155',font:{size:11},boxWidth:12,padding:12}}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#64748B',font:{size:11}}},
+          y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#64748B',font:{size:11}}}
+        },
+        animation:{duration:900,easing:'easeOutQuart'}
+      }
+    });
+
+    // ─── closure donut ───
+    destroyChart('closure');
+    charts.closure=new Chart(document.getElementById('closureChart'),{
+      type:'doughnut',
+      data:{
+        labels:[`Closed (${closedIss})`,`Open (${openIss})`],
+        datasets:[{
+          data:[closedIss||1,openIss||0],
+          backgroundColor:['#DC2626','#7C3AED'],
+          borderWidth:0,hoverOffset:6
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'65%',
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#334155',font:{size:11},boxWidth:12,padding:12}},
+          tooltip:{callbacks:{label:c=>` ${c.label}: ${pct(c.raw,(closedIss+openIss))}%`}}
+        },
+        animation:{duration:900,easing:'easeOutQuart'}
+      }
+    });
+
+    // ─── data completeness ───
+    let totalCells=rows.length*allHeaders.length;
+    let filled=0;
+    rows.forEach(r=>allHeaders.forEach(h=>{if(r[h]&&String(r[h]).trim())filled++;}));
+    let filledPct=totalCells?(filled/totalCells*100).toFixed(1):0;
+    let emptyPct=(100-filledPct).toFixed(1);
+    destroyChart('compl');
+    charts.compl=new Chart(document.getElementById('complChart'),{
+      type:'doughnut',
+      data:{
+        labels:[`Data Filled (${filledPct}%)`,`Empty (${emptyPct}%)`],
+        datasets:[{data:[parseFloat(filledPct),parseFloat(emptyPct)],backgroundColor:['#F97316','#E2E8F0'],borderWidth:0}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'68%',
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#334155',font:{size:11},boxWidth:10,padding:10}},
+        },
+        animation:{duration:900}
+      }
+    });
+
+    // ─── HP breakdown bars ───
+    const hpVals=[{l:'Below 30 HP',v:below30,c:'#7C3AED'},{l:'30-60 HP',v:hp3060,c:'#9D4EDD'},{l:'60-101 HP',v:hp60101,c:'#BE6FE8'},{l:'Above 101 HP',v:hpAbove,c:'#D9A3F3'}];
+    const maxHp=Math.max(...hpVals.map(x=>x.v),1);
+    document.getElementById('hpBreakdown').innerHTML=hpVals.map(h=>`
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span style="font-size:11px;color:var(--text2);">${h.l}</span>
+          <span style="font-size:11px;font-weight:700;font-family:'Space Mono';">${h.v}</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${(h.v/maxHp*100).toFixed(0)}%;background:${h.c};"></div></div>
+      </div>`).join('');
+
+    // ─── sample detail ───
+    const s=rows[0]||{};
+    const statusV=gv(s,'Status')||'—';
+    const badgeCls=statusV.toLowerCase().includes('close')?'badge-closed':statusV.toLowerCase().includes('open')?'badge-open':statusV.toLowerCase().includes('rca')?'badge-rca':'badge-note';
+    document.getElementById('sampleDetail').innerHTML=`
+      <div class="kv-row"><span class="kv-key">SCR Number</span><span class="kv-val blue">${gv(s,'Issue ID','scr')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Category</span><span class="kv-val">${gv(s,'Category','HP Category')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Problem</span><span class="kv-val">${gv(s,'Remark','problem')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Cases</span><span class="kv-val">${gn(s,'Unique Service','unique')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Status</span><span class="kv-val"><span class="status-badge ${badgeCls}">${statusV}</span></span></div>
+      <div class="kv-row"><span class="kv-key">Owner</span><span class="kv-val blue">${gv(s,'Owner')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Department</span><span class="kv-val">${gv(s,'Department')||'—'}</span></div>
+      <div class="kv-row"><span class="kv-key">Report Date</span><span class="kv-val">${gv(s,'Report Date','date')||'16-Feb-2026'}</span></div>
+    `;
+
+    // ─── table ───
+    document.getElementById('shownCount').textContent=`${rows.length} rows`;
+    document.getElementById('filterCount').textContent=`Showing ${rows.length} of ${allRows.length}`;
+    const showCols=allHeaders.slice(0,12);
+    document.getElementById('tHead').innerHTML=`<tr><th>#</th>${showCols.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+    const tb=document.getElementById('tBody'); tb.innerHTML='';
+    rows.forEach((row,i)=>{
+      const tr=document.createElement('tr');
+      const statusCell=gv(row,'Status','status');
+      const bc=statusCell.toLowerCase().includes('close')?'badge-closed':statusCell.toLowerCase().includes('open')?'badge-open':statusCell.toLowerCase().includes('rca')?'badge-rca':'badge-note';
+      tr.innerHTML=`<td><span class="row-num">${i+1}</span></td>`+
+        showCols.map(h=>{
+          let v=row[h]||'—';
+          if(h.toLowerCase().includes('status')&&v!=='—')v=`<span class="status-badge ${bc}">${v}</span>`;
+          return `<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${v}</td>`;
+        }).join('');
+      tb.appendChild(tr);
+    });
+  }
+
+  window.applyFilter=()=>{
+    const search=document.getElementById('searchInp').value.toLowerCase();
+    const status=document.getElementById('statusFilter').value;
+    const hp=document.getElementById('hpFilter').value;
+    filteredRows=allRows.filter(r=>{
+      const txt=Object.values(r).join(' ').toLowerCase();
+      return (!search||txt.includes(search))&&
+             (!status||gv(r,'Status').includes(status))&&
+             (!hp||gv(r,'HP Category','category').includes(hp));
+    });
+    updateAll();
+  };
+
+  // ─────────── XLSX EXPORT ───────────
+  window.downloadXLSX=()=>{
+    if(!allRows.length){alert('No data loaded');return;}
+    showToast('📊 Preparing Excel export...','',3000);
+
+    const wb=XLSX.utils.book_new();
+
+    // ── Sheet 1: RAW DATA ──
+    const rawData=[allHeaders,...allRows.map(r=>allHeaders.map(h=>r[h]||''))];
+    const wsRaw=XLSX.utils.aoa_to_sheet(rawData);
+    // column widths
+    wsRaw['!cols']=allHeaders.map(()=>({wch:18}));
+    // style header row
+    allHeaders.forEach((_,ci)=>{
+      const cell=wsRaw[XLSX.utils.encode_cell({r:0,c:ci})];
+      if(cell)cell.s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1E3A8A'}},alignment:{horizontal:'center'}};
+    });
+    XLSX.utils.book_append_sheet(wb,wsRaw,'RAW_DATA');
+
+    // ── Sheet 2: DASHBOARD ──
+    const rows=allRows;
+    const totalIss=rows.reduce((s,r)=>s+gn(r,'Unique Service','unique'),0);
+    const closedIss=rows.reduce((s,r)=>s+gn(r,'Closed','closed'),0);
+    const closureNotes=rows.filter(r=>gv(r,'Status').toLowerCase().includes('closure')).length;
+    const openIss=rows.reduce((s,r)=>s+gn(r,'Balance Open','open'),0);
+    const below30=rows.reduce((s,r)=>s+gn(r,'Below 30','below'),0);
+    const hp3060=rows.reduce((s,r)=>s+gn(r,'30-60 HP'),0);
+    const hp60101=rows.reduce((s,r)=>s+gn(r,'60-101 HP'),0);
+    const hpAbove=rows.reduce((s,r)=>s+gn(r,'Above 101 HP','above'),0);
+    const planJan=rows.reduce((s,r)=>s+gn(r,'Impl Jan'),0);
+    const planFeb=rows.reduce((s,r)=>s+gn(r,'Impl Feb'),0);
+    const planMar=rows.reduce((s,r)=>s+gn(r,'Impl Mar'),0);
+    const planApr=rows.reduce((s,r)=>s+gn(r,'Impl Apr'),0);
+    const actJan=rows.reduce((s,r)=>s+gn(r,'Actual Jan'),0);
+    const actFeb=rows.reduce((s,r)=>s+gn(r,'Actual Feb'),0);
+    let totalCells=rows.length*allHeaders.length, filled=0;
+    rows.forEach(r=>allHeaders.forEach(h=>{if(r[h]&&String(r[h]).trim())filled++;}));
+    const filledPct=totalCells?(filled/totalCells*100).toFixed(1):0;
+
+    const dash=[
+      [`Issue Reported from 01-Jan-26 to 31-Jan-2026 | Status as on 16-Feb-2026`,'','','','','','','','','','','','',''],
+      [''],
+      ['OVERALL SUMMARY','','','','','','','IMPLEMENTATION PLAN vs ACTUAL','','','','','',''],
+      ['Metric','Value','','','','','','Month','Plan','Actual','','','',''],
+      ['Total Issues (Unique Service Issue)',totalIss,'','','','','','Jan-26',planJan,actJan,'','','',''],
+      ['Closed Issues (Closed as on Date)',closedIss,'','','','','','Feb-26',planFeb,actFeb,'','','',''],
+      ['Closure Notes',closureNotes,'','','','','','Mar-26',planMar,'—','','','',''],
+      ['Balance Open Issue',openIss,'','','','','','Apr-26',planApr,'—','','','',''],
+      [''],
+      ['ISSUES BY HP CATEGORY','','','','','','','DATA COMPLETENESS','','','','','',''],
+      ['HP Category','Count','','','','','','Metric','Value','','','','',''],
+      ['Below 30 HP',below30,'','','','','','Data Filled',filledPct+'%','','','','',''],
+      ['30-60 HP',hp3060,'','','','','','Data Empty',(100-parseFloat(filledPct)).toFixed(1)+'%','','','','',''],
+      ['60-101 HP',hp60101,'','','','','','Total Rows',rows.length,'','','','',''],
+      ['Above 101 HP',hpAbove,'','','','','','Total Columns',allHeaders.length,'','','','',''],
+      ['TOTAL',below30+hp3060+hp60101+hpAbove,'','','','','','','','','','','',''],
+      [''],
+      ['CLOSURE STATUS SUMMARY','','','','','','','','','','','','',''],
+      ['Status','Count','% of Total','','','','','','','','','','',''],
+      ['Closed',closedIss,pct(closedIss,totalIss)+'%','','','','','','','','','','',''],
+      ['Open',openIss,pct(openIss,totalIss)+'%','','','','','','','','','','',''],
+      ['Closure Notes',closureNotes,pct(closureNotes,allRows.length)+'%','','','','','','','','','','',''],
+      [''],
+      [`Generated on: ${fmt()} | TWS Issue Tracking Dashboard`,'','','','','','','','','','','','',''],
+    ];
+    const wsDash=XLSX.utils.aoa_to_sheet(dash);
+    wsDash['!cols']=Array(14).fill({wch:20});
+    // Header styling
+    const headerStyle={font:{bold:true,sz:13,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'0B2D6E'}},alignment:{horizontal:'center'}};
+    if(wsDash['A1'])wsDash['A1'].s={...headerStyle};
+    // Section headers
+    [[2,0],[2,7],[9,0],[9,7],[17,0]].forEach(([r,c])=>{
+      const cell=wsDash[XLSX.utils.encode_cell({r,c})];
+      if(cell)cell.s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1E3A8A'}}};
+    });
+    XLSX.utils.book_append_sheet(wb,wsDash,'DASHBOARD');
+
+    // ── Sheet 3: HP ANALYSIS ──
+    const hpRows=[];
+    const hpCats=['Below 30 HP','30-60 HP','60-101 HP','Above 101 HP'];
+    hpRows.push(['HP Category','Total Issues','Closed','Open','Plan (Jan-Apr)','Actual (Jan-Feb)','% Closed']);
+    hpCats.forEach(cat=>{
+      const catRows=allRows.filter(r=>gv(r,'HP Category','category')===cat);
+      const t=catRows.reduce((s,r)=>s+gn(r,'Unique Service','unique'),0);
+      const c=catRows.reduce((s,r)=>s+gn(r,'Closed','closed'),0);
+      const o=catRows.reduce((s,r)=>s+gn(r,'Balance Open','open'),0);
+      const plan=catRows.reduce((s,r)=>s+gn(r,'Impl Jan')+gn(r,'Impl Feb')+gn(r,'Impl Mar')+gn(r,'Impl Apr'),0);
+      const actual=catRows.reduce((s,r)=>s+gn(r,'Actual Jan')+gn(r,'Actual Feb'),0);
+      hpRows.push([cat,t,c,o,plan,actual,pct(c,t)+'%']);
+    });
+    const wsHP=XLSX.utils.aoa_to_sheet(hpRows);
+    wsHP['!cols']=[22,15,12,12,15,16,12].map(wch=>({wch}));
+    hpRows[0].forEach((_,ci)=>{
+      const cell=wsHP[XLSX.utils.encode_cell({r:0,c:ci})];
+      if(cell)cell.s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1E3A8A'}},alignment:{horizontal:'center'}};
+    });
+    XLSX.utils.book_append_sheet(wb,wsHP,'HP_ANALYSIS');
+
+    XLSX.writeFile(wb,`TWS_Issue_Dashboard_${fmt()}.xlsx`);
+    showToast('✅ Excel file downloaded!','success');
+  };
+
+  // ─────────── PDF EXPORT ───────────
+  window.downloadPDF=()=>{
+    if(!allRows.length){alert('No data loaded');return;}
+    showToast('📄 Generating PDF...','',5000);
+
+    const rows=allRows;
+    const totalIss=rows.reduce((s,r)=>s+gn(r,'Unique Service','unique'),0);
+    const closedIss=rows.reduce((s,r)=>s+gn(r,'Closed','closed'),0);
+    const closureNotes=rows.filter(r=>gv(r,'Status').toLowerCase().includes('closure')).length;
+    const openIss=rows.reduce((s,r)=>s+gn(r,'Balance Open','open'),0);
+    const below30=rows.reduce((s,r)=>s+gn(r,'Below 30','below'),0);
+    const hp3060=rows.reduce((s,r)=>s+gn(r,'30-60 HP'),0);
+    const hp60101=rows.reduce((s,r)=>s+gn(r,'60-101 HP'),0);
+    const hpAbove=rows.reduce((s,r)=>s+gn(r,'Above 101 HP','above'),0);
+    const planJan=rows.reduce((s,r)=>s+gn(r,'Impl Jan'),0);
+    const planFeb=rows.reduce((s,r)=>s+gn(r,'Impl Feb'),0);
+    const planMar=rows.reduce((s,r)=>s+gn(r,'Impl Mar'),0);
+    const planApr=rows.reduce((s,r)=>s+gn(r,'Impl Apr'),0);
+    const actJan=rows.reduce((s,r)=>s+gn(r,'Actual Jan'),0);
+    const actFeb=rows.reduce((s,r)=>s+gn(r,'Actual Feb'),0);
+    const s0=rows[0]||{};
+
+    const html=`
+    <div style="font-family:Arial,sans-serif;background:#fff;color:#000;padding:24px;width:100%;">
+      <div style="background:#0B2D6E;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:20px;">
+        <div style="font-size:18px;font-weight:700;letter-spacing:.5px;">ISSUE TRACKING DASHBOARD</div>
+        <div style="font-size:11px;opacity:.8;margin-top:3px;">Issue Reported: 01-Jan-26 to 31-Jan-2026 | Status as on 16-Feb-2026 | Generated: ${fmt()}</div>
+      </div>
+
+      <!-- Summary cards -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        ${[['TOTAL ISSUES',totalIss,'#F97316'],['CLOSED ISSUES',closedIss,'#16A34A'],['CLOSURE NOTES',closureNotes,'#0EA5E9'],['OPEN ISSUES',openIss,'#DC2626'],['BELOW 30 HP',below30,'#7C3AED']]
+          .map(([l,v,c])=>`<div style="flex:1;background:#F8FAFC;border-radius:8px;padding:12px;border-top:4px solid ${c};">
+            <div style="font-size:9px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">${l}</div>
+            <div style="font-size:28px;font-weight:700;color:${c};font-family:monospace;">${v}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Charts section -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+        <tr>
+          <td style="width:40%;vertical-align:top;padding-right:10px;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:14px;border:1px solid #E2E8F0;">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:10px;">ISSUES BY HP CATEGORY</div>
+              ${[['Below 30 HP',below30,'#7C3AED'],['30-60 HP',hp3060,'#9D4EDD'],['60-101 HP',hp60101,'#BE6FE8'],['Above 101 HP',hpAbove,'#D9A3F3']]
+                .map(([l,v,c])=>{const max=Math.max(below30,hp3060,hp60101,hpAbove,1);return `
+                <div style="margin-bottom:8px;">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                    <span style="font-size:10px;color:#334155;">${l}</span>
+                    <span style="font-size:10px;font-weight:700;">${v}</span>
+                  </div>
+                  <div style="background:#E2E8F0;border-radius:3px;height:8px;">
+                    <div style="background:${c};width:${(v/max*100).toFixed(0)}%;height:100%;border-radius:3px;"></div>
+                  </div>
+                </div>`;}).join('')}
+            </div>
+          </td>
+          <td style="width:30%;vertical-align:top;padding-right:10px;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:14px;border:1px solid #E2E8F0;">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:10px;">IMPLEMENTATION PLAN vs ACTUAL</div>
+              <table style="width:100%;font-size:10px;border-collapse:collapse;">
+                <tr style="background:#1E3A8A;color:#fff;"><th style="padding:5px;text-align:left;">Month</th><th style="padding:5px;">Plan</th><th style="padding:5px;">Actual</th></tr>
+                ${[['Jan-26',planJan,actJan],['Feb-26',planFeb,actFeb],['Mar-26',planMar,'—'],['Apr-26',planApr,'—']]
+                  .map(([m,p,a])=>`<tr style="border-bottom:1px solid #E2E8F0;"><td style="padding:5px;">${m}</td><td style="padding:5px;text-align:center;font-weight:700;color:#2563EB;">${p}</td><td style="padding:5px;text-align:center;font-weight:700;color:#DC2626;">${a}</td></tr>`).join('')}
+              </table>
+            </div>
+          </td>
+          <td style="width:30%;vertical-align:top;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:14px;border:1px solid #E2E8F0;">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:10px;">CLOSURE STATUS</div>
+              <div style="margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:10px;">Closed</span><span style="font-size:10px;font-weight:700;color:#16A34A;">${closedIss} (${pct(closedIss,totalIss)}%)</span></div>
+                <div style="background:#E2E8F0;height:10px;border-radius:5px;margin-top:3px;"><div style="background:#16A34A;width:${pct(closedIss,totalIss)}%;height:100%;border-radius:5px;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;"><span style="font-size:10px;">Open</span><span style="font-size:10px;font-weight:700;color:#DC2626;">${openIss} (${pct(openIss,totalIss)}%)</span></div>
+                <div style="background:#E2E8F0;height:10px;border-radius:5px;margin-top:3px;"><div style="background:#DC2626;width:${pct(openIss,totalIss)}%;height:100%;border-radius:5px;"></div></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Sample detail + data table -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+        <tr>
+          <td style="width:40%;vertical-align:top;padding-right:10px;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:14px;border:1px solid #E2E8F0;">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:10px;">SAMPLE ISSUE DETAIL (Sr No: 1)</div>
+              ${[['SCR Number',gv(s0,'Issue ID','scr')||'—'],['Category',gv(s0,'Category','HP Category')||'—'],['Problem',gv(s0,'Remark','problem')||'—'],['Cases',gn(s0,'Unique Service','unique')||'—'],['Status',gv(s0,'Status')||'—'],['Owner',gv(s0,'Owner')||'—'],['Department',gv(s0,'Department')||'—']]
+                .map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #E2E8F0;font-size:10px;"><span style="color:#64748B;font-weight:600;">${k}</span><span style="color:#1E3A8A;font-weight:600;">${v}</span></div>`).join('')}
+            </div>
+          </td>
+          <td style="width:60%;vertical-align:top;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:14px;border:1px solid #E2E8F0;">
+              <div style="font-size:11px;font-weight:700;color:#1E3A8A;margin-bottom:10px;">ALL ISSUES OVERVIEW (first 10)</div>
+              <table style="width:100%;border-collapse:collapse;font-size:9px;">
+                <tr style="background:#1E3A8A;color:#fff;">
+                  ${['#','Issue ID','Category','Issues','Closed','Open','Status'].map(h=>`<th style="padding:5px;text-align:left;">${h}</th>`).join('')}
+                </tr>
+                ${rows.slice(0,10).map((r,i)=>`<tr style="background:${i%2?'#F8FAFC':'#fff'};border-bottom:1px solid #E2E8F0;">
+                  <td style="padding:4px 5px;">${i+1}</td>
+                  <td style="padding:4px 5px;color:#2563EB;font-weight:600;">${gv(r,'Issue ID','scr')||'—'}</td>
+                  <td style="padding:4px 5px;">${gv(r,'HP Category','category')||'—'}</td>
+                  <td style="padding:4px 5px;text-align:center;">${gn(r,'Unique Service','unique')||'—'}</td>
+                  <td style="padding:4px 5px;text-align:center;color:#16A34A;font-weight:700;">${gn(r,'Closed','closed')||'—'}</td>
+                  <td style="padding:4px 5px;text-align:center;color:#DC2626;font-weight:700;">${gn(r,'Balance Open','open')||'—'}</td>
+                  <td style="padding:4px 5px;font-size:8px;">${gv(r,'Status')||'—'}</td>
+                </tr>`).join('')}
+              </table>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div style="font-size:9px;color:#94A3B8;text-align:center;margin-top:8px;">
+        Report generated on ${fmt()} · TWS Issue Tracking Dashboard · Based on ${allRows.length} rows
+      </div>
+    </div>`;
+
+    const el=document.createElement('div');
+    el.innerHTML=html;
+    document.body.appendChild(el);
+    html2pdf().set({
+      margin:[.4,.4,.4,.4],
+      filename:`TWS_Issue_Report_${fmt()}.pdf`,
+      image:{type:'jpeg',quality:.97},
+      html2canvas:{scale:2.5,useCORS:true,letterRendering:true},
+      jsPDF:{unit:'in',format:'a4',orientation:'landscape'}
+    }).from(el).save().then(()=>{
+      document.body.removeChild(el);
+      showToast('✅ PDF downloaded!','success');
+    }).catch(()=>{document.body.removeChild(el);alert('PDF error');});
+  };
+
+  // ─────────── RESET ───────────
+  window.resetDash=()=>{
+    allRows=[];allHeaders=[];filteredRows=[];
+    Object.values(charts).forEach(c=>c.destroy());charts={};
+    document.getElementById('importScreen').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('fileInp').value='';
+  };
+
+})();
+</script>
+</body>
+</html>
